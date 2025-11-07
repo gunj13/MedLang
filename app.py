@@ -272,7 +272,7 @@ FORMAT YOUR RESPONSE EXACTLY AS:
             messages,
             add_generation_prompt=True,
             return_tensors="pt"
-        ).to(menstrual_llama.device)
+        )
 
         # Terminators as specified in model card
         terminators = [

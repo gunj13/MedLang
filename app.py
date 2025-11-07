@@ -1,3 +1,4 @@
+%%writefile app.py
 import streamlit as st
 import json
 import faiss
@@ -95,9 +96,7 @@ st.markdown("""
 @st.cache_resource
 def load_environment():
     load_dotenv()
-    # hf_token = os.getenv("HF_TOKEN")
-    # Safely fetch the token
-    hf_token = st.secrets.get("HF_TOKEN")
+    hf_token = st.secrets.get("HF_TOKEN", None)
     if not hf_token:
         st.error("⚠️ HF_TOKEN not found in .env file! Please add your HuggingFace access token.")
         st.info("Get your token from: https://huggingface.co/settings/tokens")
@@ -110,46 +109,25 @@ def initialize_embedder():
     return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 
-# --- Load Menstrual-LLaMA (Quantized Direct Load) ---
+from huggingface_hub import InferenceClient
+
 @st.cache_resource
 def load_menstrual_llama(hf_token):
     """
-    Load the Menstrual-LLaMA-8B model directly with 4-bit quantization
-    for efficient use on Colab GPU.
+    Use Hugging Face Inference API instead of local GPU model load.
+    Keeps all logic identical, CPU-safe for Streamlit Cloud.
     """
     try:
-        # Define 4-bit quantization configuration
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.bfloat16
-        )
-
-        with st.spinner("🔴 Loading Menstrual-LLaMA-8B model with 4-bit quantization..."):
+        with st.spinner("🔴 Connecting to Menstrual-LLaMA-8B via Hugging Face API..."):
             model_path = "proadhikary/Menstrual-LLaMA-8B"
-
-            # 1. Load the tokenizer from the model path
             tokenizer = AutoTokenizer.from_pretrained(model_path, token=hf_token)
-
-            # 2. Load the model directly, applying 4-bit config
-            model = AutoModelForCausalLM.from_pretrained(
-                model_path,
-                token=hf_token,
-                quantization_config=bnb_config, # Apply BITSANDBYTES CONFIG
-                device_map="auto",
-            )
-
-            if tokenizer.pad_token is None:
-                tokenizer.pad_token = tokenizer.eos_token
-
-            model.eval()
-
-        # st.success("✅ Menstrual-LLaMA loaded successfully !") -----> commented this
-        return model, tokenizer
+            client = InferenceClient(model=model_path, token=hf_token)
+        st.success("✅ Connected to Menstrual-LLaMA-8B through HF Inference API")
+        return client, tokenizer
 
     except Exception as e:
-        st.error(f"⚠️ Could not load Menstrual-LLaMA: {str(e)}")
-        st.info("This loading method requires your HF_TOKEN to have access to 'proadhikary/Menstrual-LLaMA-8B'. Please check your token and model permissions.")
+        st.error(f"⚠️ Could not connect to Menstrual-LLaMA API: {str(e)}")
+        st.info("Make sure your HF_TOKEN has access to 'proadhikary/Menstrual-LLaMA-8B'.")
         st.stop()
 
 
@@ -308,21 +286,13 @@ FORMAT YOUR RESPONSE EXACTLY AS:
             torch.backends.cuda.enable_mem_efficient_sdp(False)
             torch.backends.cuda.enable_flash_sdp(False)
 
-        # Generate with parameters from model card
-        with torch.no_grad():
-            outputs = menstrual_llama.generate(
-                input_ids,
-                pad_token_id=tokenizer.pad_token_id,
-                max_new_tokens=400,
-                eos_token_id=terminators,
-                do_sample=True,
-                temperature=0.6,  # As per model card
-                top_p=0.9
-            )
-
-        # Extract only the generated response
-        response = outputs[0][input_ids.shape[-1]:]
-        response_text = tokenizer.decode(response, skip_special_tokens=True)
+        # --- API-based generation (same prompt text, CPU-safe) ---
+        response_text = menstrual_llama.text_generation(
+            prompt=tokenizer.decode(input_ids[0], skip_special_tokens=True),
+            max_new_tokens=400,
+            temperature=0.6,
+            top_p=0.9
+        )
 
         # Parse reasoning and answer
         reasoning = ""

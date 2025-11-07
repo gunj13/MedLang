@@ -95,7 +95,9 @@ st.markdown("""
 @st.cache_resource
 def load_environment():
     load_dotenv()
-    hf_token = os.getenv("HF_TOKEN")
+    # hf_token = os.getenv("HF_TOKEN")
+    # Safely fetch the token
+    hf_token = st.secrets.get("HF_TOKEN")
     if not hf_token:
         st.error("⚠️ HF_TOKEN not found in .env file! Please add your HuggingFace access token.")
         st.info("Get your token from: https://huggingface.co/settings/tokens")

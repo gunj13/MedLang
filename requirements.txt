@@ -1,0 +1,12 @@
+Pillow
+datasets
+faiss-cpu
+langchain-core
+langgraph
+numpy
+python-dotenv
+requests
+sentence-transformers
+streamlit
+torch
+transformers

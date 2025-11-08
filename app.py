@@ -139,7 +139,7 @@ INSTRUCTIONS:
     try:
         # --- Call Meta-Llama-3-8B-Instruct ---
         completion = client.chat.completions.create(
-            model="meta-llama/Meta-Llama-3-8B-Instruct:novita",
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": user_prompt}

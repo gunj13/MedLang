@@ -218,7 +218,7 @@ YOUR KNOWLEDGE:
 """
 
     # Construct user message with all context
-   user_message = f"""
+    user_message = f"""
 {history_str}
 CURRENT USER QUESTION: {query}
 

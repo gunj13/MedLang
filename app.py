@@ -122,7 +122,6 @@ def load_menstrual_llama(hf_token):
             model="meta-llama/Llama-3-8b-instruct",
             token=hf_token     # optional but avoids rate-limit issues
         )
-        st.success("✅ Connected to public LLaMA-3-8B endpoint (Hugging Face Inference API)")
         return client, None   # keep API consistent (tokenizer=None)
 
     except Exception as e:

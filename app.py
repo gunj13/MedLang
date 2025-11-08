@@ -14,6 +14,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import operator
+from huggingface_hub import InferenceClient
+from textwrap import dedent
 
 # Page configuration
 st.set_page_config(
@@ -108,26 +110,25 @@ def initialize_embedder():
     return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 
-from huggingface_hub import InferenceClient
-
+# --- Load Menstrual-LLaMA ---
 @st.cache_resource
 def load_menstrual_llama(hf_token):
     """
-    Use Hugging Face Inference API instead of local GPU model load.
-    Keeps all logic identical, CPU-safe for Streamlit Cloud.
+    Use Hugging Face's hosted meta-llama/Llama-3-8b-instruct endpoint
+    through the free Inference API (CPU-safe, no local weights).
     """
     try:
-        with st.spinner("🔴 Connecting to Menstrual-LLaMA-8B via Hugging Face API..."):
-            model_path = "proadhikary/Menstrual-LLaMA-8B"
-            tokenizer = AutoTokenizer.from_pretrained(model_path, token=hf_token)
-            client = InferenceClient(model=model_path, token=hf_token)
-        st.success("✅ Connected to Menstrual-LLaMA-8B through HF Inference API")
-        return client, tokenizer
+        client = InferenceClient(
+            model="meta-llama/Llama-3-8b-instruct",
+            token=hf_token     # optional but avoids rate-limit issues
+        )
+        st.success("✅ Connected to public LLaMA-3-8B endpoint (Hugging Face Inference API)")
+        return client, None   # keep API consistent (tokenizer=None)
 
     except Exception as e:
-        st.error(f"⚠️ Could not connect to Menstrual-LLaMA API: {str(e)}")
-        st.info("Make sure your HF_TOKEN has access to 'proadhikary/Menstrual-LLaMA-8B'.")
+        st.error(f"⚠️ Could not connect to the public endpoint: {str(e)}")
         st.stop()
+
 
 
 # --- Load dataset and build FAISS index ---
@@ -285,12 +286,19 @@ FORMAT YOUR RESPONSE EXACTLY AS:
             torch.backends.cuda.enable_mem_efficient_sdp(False)
             torch.backends.cuda.enable_flash_sdp(False)
 
-        # --- API-based generation (same prompt text, CPU-safe) ---
+        # --- Use hosted Inference API instead of local model ---      
+        prompt = dedent(f"""
+        {system_message}
+        
+        User: {user_message}
+        Assistant:
+        """)
+        
         response_text = menstrual_llama.text_generation(
-            prompt=tokenizer.decode(input_ids[0], skip_special_tokens=True),
+            prompt,
             max_new_tokens=400,
             temperature=0.6,
-            top_p=0.9
+            top_p=0.9,
         )
 
         # Parse reasoning and answer

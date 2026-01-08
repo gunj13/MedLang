@@ -1,5 +1,6 @@
 # MedLang
 Women's Health Companion
+Visit here: <https://medlang.streamlit.app/>
 
 **MedLang** is a specialized conversational AI assistant designed to provide accurate, context-aware guidance on **Menstrual Health** and **Pregnancy/Fertility** topics.  
 It employs a novel **Hybrid RAG (Retrieval-Augmented Generation) Architecture** orchestrated by **LangGraph** to seamlessly switch between internal specialized knowledge and external retrieval.
